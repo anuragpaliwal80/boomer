@@ -7,7 +7,6 @@ import (
 	"runtime/debug"
 	"sync/atomic"
 	"time"
-	"sync"
 )
 
 const (
@@ -84,8 +83,8 @@ func (r *runner) spawnGoRoutines(spawnCount int, quit chan bool) {
 	log.Println("Hatching and swarming", spawnCount, "clients at the rate", r.hatchRate, "clients/s...")
 	r.fnsChannels = make([]chan func(), spawnCount)
 
-	for fnChan := range r.fnsChannels {
-		fnChan = make(chan func(), 1)
+	for k :=0; k< len(r.fnsChannels); k++ {
+		r.fnsChannels[k] = make(chan func(), 1)
 	}
 
 	r.synchronizeWeights(spawnCount)
@@ -111,11 +110,12 @@ func (r *runner) spawnGoRoutines(spawnCount int, quit chan bool) {
 				}
 				atomic.AddInt32(&r.numClients, 1)
 				go func(index int) {
+					var fn func()
 					for {
 						select {
 						case <-quit:
 							return
-						case fn := <- r.fnsChannels[index]:
+						case fn = <- r.fnsChannels[index]:
 						default:
 								if maxRPSEnabled {
 									token := atomic.AddInt64(&maxRPSThreshold, -1)
