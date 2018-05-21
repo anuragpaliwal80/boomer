@@ -39,8 +39,7 @@ type runner struct {
 	state       string
 	client      client
 	nodeID      string
-	fns []func()
-	mutexFn sync.RWMutex
+	fnsChannels []chan func()
 }
 
 func (r *runner) safeRun(fn func()) {
@@ -71,23 +70,24 @@ func (r *runner) synchronizeWeights(spawnCount int) {
 			amount = int(float64(spawnCount) / float64(len(r.tasks)))
 		}
 		for i := 1; i <= amount && j < spawnCount; i, j = i+1, j+1 {
-			r.mutexFn.Lock()
-			r.fns[j] = task.Fn
-			r.mutexFn.Unlock()
+			r.fnsChannels[j] <- task.Fn
 	}
 }
 
 for ;j < spawnCount; j++ {
-		r.mutexFn.Lock()
-		r.fns[j] = r.tasks[(j % len(r.tasks))].Fn
-		r.mutexFn.Unlock()
+		r.fnsChannels[j] <- r.tasks[(j % len(r.tasks))].Fn
 	}
 }
 
 func (r *runner) spawnGoRoutines(spawnCount int, quit chan bool) {
 
 	log.Println("Hatching and swarming", spawnCount, "clients at the rate", r.hatchRate, "clients/s...")
-	r.fns = make([]func(), spawnCount)
+	r.fnsChannels = make([]chan func(), spawnCount)
+
+	for fnChan := range r.fnsChannels {
+		fnChan = make(chan func(), 1)
+	}
+
 	r.synchronizeWeights(spawnCount)
 	go func(spawnCount int, quit chan bool) {
 		for {
@@ -113,12 +113,10 @@ func (r *runner) spawnGoRoutines(spawnCount int, quit chan bool) {
 				atomic.AddInt32(&r.numClients, 1)
 				go func(index int) {
 					for {
-						r.mutexFn.RLock()
-						fn := r.fns[index]
-						r.mutexFn.RUnlock()
 						select {
 						case <-quit:
 							return
+						case fn = <- fnsChannels[index]:
 						default:
 								if maxRPSEnabled {
 									token := atomic.AddInt64(&maxRPSThreshold, -1)
