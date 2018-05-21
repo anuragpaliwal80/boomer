@@ -101,7 +101,6 @@ func (r *runner) spawnGoRoutines(spawnCount int, quit chan bool) {
 	}
 	}(spawnCount, quit)
 	for j:=0; j< spawnCount; j++ {
-			log.Println("In fn loop",j, "Fn Length:", len(r.fns))
 			select {
 			case <-quit:
 				// quit hatching goroutine
@@ -116,7 +115,7 @@ func (r *runner) spawnGoRoutines(spawnCount int, quit chan bool) {
 						select {
 						case <-quit:
 							return
-						case fn = <- fnsChannels[index]:
+						case fn := <- r.fnsChannels[index]:
 						default:
 								if maxRPSEnabled {
 									token := atomic.AddInt64(&maxRPSThreshold, -1)
