@@ -24,10 +24,10 @@ const (
 // when boomer receive start message, it will spawn several
 // goroutines to run Task.Fn .
 type Task struct {
-	Weight int
-	Fn     func()
-	Name   string
-	WeightFn func() (int)
+	Weight   int
+	Fn       func()
+	Name     string
+	WeightFn func() int
 }
 
 type runner struct {
@@ -70,10 +70,10 @@ func (r *runner) synchronizeWeights(spawnCount int) {
 		}
 		for i := 1; i <= amount && j < spawnCount; i, j = i+1, j+1 {
 			r.fnsChannels[j] <- task.Fn
+		}
 	}
-}
 
-for ;j < spawnCount; j++ {
+	for ; j < spawnCount; j++ {
 		r.fnsChannels[j] <- r.tasks[(j % len(r.tasks))].Fn
 	}
 }
@@ -83,7 +83,7 @@ func (r *runner) spawnGoRoutines(spawnCount int, quit chan bool) {
 	log.Println("Hatching and swarming", spawnCount, "clients at the rate", r.hatchRate, "clients/s...")
 	r.fnsChannels = make([]chan func(), spawnCount)
 
-	for k :=0; k< len(r.fnsChannels); k++ {
+	for k := 0; k < len(r.fnsChannels); k++ {
 		r.fnsChannels[k] = make(chan func(), 1)
 	}
 
@@ -91,47 +91,47 @@ func (r *runner) spawnGoRoutines(spawnCount int, quit chan bool) {
 	go func(spawnCount int, quit chan bool) {
 		for {
 			time.Sleep(time.Duration(weightSyncSeconds) * time.Second)
-		select {
-		case <-quit:
-			return
-		default:
-			r.synchronizeWeights(spawnCount)
-		}
-	}
-	}(spawnCount, quit)
-	for j:=0; j< spawnCount; j++ {
 			select {
 			case <-quit:
-				// quit hatching goroutine
 				return
 			default:
-				if j%r.hatchRate == 0 {
-					time.Sleep(1 * time.Second)
-				}
-				atomic.AddInt32(&r.numClients, 1)
-				go func(index int) {
-					var fn func()
-					for {
-						select {
-						case <-quit:
-							return
-						case fn = <- r.fnsChannels[index]:
-						default:
-								if maxRPSEnabled {
-									token := atomic.AddInt64(&maxRPSThreshold, -1)
-									if token < 0 {
-										// max RPS is reached, wait until next second
-										<-maxRPSControlChannel
-									} else {
-										r.safeRun(fn)
-									}
-								} else {
-									r.safeRun(fn)
-								}
+				r.synchronizeWeights(spawnCount)
+			}
+		}
+	}(spawnCount, quit)
+	for j := 0; j < spawnCount; j++ {
+		select {
+		case <-quit:
+			// quit hatching goroutine
+			return
+		default:
+			if j%r.hatchRate == 0 {
+				time.Sleep(1 * time.Second)
+			}
+			atomic.AddInt32(&r.numClients, 1)
+			go func(index int) {
+				var fn func()
+				for {
+					select {
+					case <-quit:
+						return
+					case fn = <-r.fnsChannels[index]:
+					default:
+						if maxRPSEnabled {
+							token := atomic.AddInt64(&maxRPSThreshold, -1)
+							if token < 0 {
+								// max RPS is reached, wait until next second
+								<-maxRPSControlChannel
+							} else {
+								r.safeRun(fn)
+							}
+						} else {
+							r.safeRun(fn)
 						}
 					}
-				}(j)
-			}
+				}
+			}(j)
+		}
 	}
 
 	r.hatchComplete()
