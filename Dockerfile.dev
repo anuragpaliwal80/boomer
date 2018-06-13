@@ -1,0 +1,2 @@
+FROM golang:1.9.4
+RUN curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh

@@ -1,0 +1,36 @@
+version: "3.1"
+services:
+  locust-worker:
+    build: .
+
+    volumes:
+      - ./test-definitions:/tmp
+    environment:
+      - LOCUST_MASTER=locust-master
+      - LOCUST_MASTER_PORT=5557
+      - LOCUST_MASTER_WEB=8089
+      - MAX_RPS=0
+      - TEST_DEFINITIONS=/tmp/testfile.json
+      - TEST_SUITES=suite-scale
+      - MAX_BODY_SIZE=1073741925
+    links:
+      - "locust-master:locust-master"
+      - "nginx:nginx"
+  locust-master:
+    image: abhisheknsit/locustio:1.0.25
+    ports:
+      - "8089:8089"
+      - "5557:5557"
+      - "5558:5558"
+    volumes:
+      - ./test-definitions:/tmp
+    environment:
+      - LOCUST_MODE=master
+      - LOCUST_SCRIPT=/tmp/locustfile.py
+      - TARGET_HOST=https://scale-avi.sandbox.cloud.adobe.io
+      - TEST_SUITES=suite-scale110
+
+  nginx:
+    image: navneetpahwa/npahwa-nginx:latest
+    ports:
+      - 8080:8080

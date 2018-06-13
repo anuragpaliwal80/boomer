@@ -1,0 +1,12 @@
+[{
+      "url": "http://nginx:8080",
+      "header": {},
+      "body": 1073741824,
+      "method":"POST",
+      "weight": {
+        "magnitude":5,
+        "frequency":50,
+        "constant": 10,
+        "phase":1
+      }
+}]
