@@ -1,6 +1,6 @@
 [{
       "url": "http://nginx:8080",
-      "header": {},
+      "header": [{"name": "abc", "value": 64000}, {"name": "def", "value": 32000}],
       "body": 1073741824,
       "method":"POST",
       "weight": {
@@ -9,4 +9,5 @@
         "constant": 10,
         "phase":1
       }
-}]
+}
+]

@@ -12,7 +12,10 @@ dev:
 	boomer-dev
 
 build:
-	docker build -t boomer .
+	docker build -t abhisheknsit/boomer .
 
 run: build
 	docker run -it --rm boomer
+
+release: build
+	docker push abhisheknsit/boomer

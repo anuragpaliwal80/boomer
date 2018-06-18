@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"os"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/abhisheknsit/boomer/boomer"
@@ -20,12 +19,11 @@ var (
 	httpClient          *http.Client
 	maxIdleConnections  int
 	testDefinitionsFile string
-	suiteName           []string
 	postData            []byte
 )
 
 const (
-	RequestTimeout int = 30
+	RequestTimeout int = 0
 )
 
 // init HTTPClient
@@ -42,7 +40,7 @@ type weightParams struct {
 
 type header struct {
 	name  string
-	value string
+	value int64
 }
 
 type Test struct {
@@ -94,18 +92,11 @@ func httpReq(method string, url string, bodysize int64, headers []header) func()
 		var req *http.Request
 
 		start := boomer.Now()
-
-		// if filename != "" {
-		// 	file, _ = os.Open(filename)
-		// } else {
-		// 	file = nil
-		// }
-
 		req, _ = http.NewRequest(method, url, bytes.NewReader(file))
 
 		if headers != nil {
 			for _, header := range headers {
-				req.Header.Set(header.name, header.value)
+				req.Header.Set(header.name, string(postData[:header.value]))
 			}
 			log.Println("in headers")
 		}
@@ -184,8 +175,6 @@ func init() {
 	log.Println("MaxIdleConnections", maxIdleConnections)
 	testDefinitionsFile = os.Getenv("TEST_DEFINITIONS")
 	log.Println("TestDefinition File", testDefinitionsFile)
-	suiteName = strings.Split(os.Getenv("SUITE_NAME"), ",")
-	log.Println("SuiteName", suiteName)
 	maxBodySize, _ := strconv.Atoi(os.Getenv("MAX_BODY_SIZE"))
 	postData = make([]byte, maxBodySize)
 	rand.Read(postData)
