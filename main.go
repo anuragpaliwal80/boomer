@@ -1,9 +1,9 @@
 package main
 
 import (
-	"bytes"
 	"crypto/rand"
 	"encoding/json"
+	"io"
 	"io/ioutil"
 	"log"
 	"math"
@@ -23,7 +23,8 @@ var (
 )
 
 const (
-	RequestTimeout int = 0
+	RequestTimeout int   = 0
+	DataArraySize  int64 = 10000000
 )
 
 // init HTTPClient
@@ -87,12 +88,21 @@ func httpget(url string, headers []header) {
 }
 
 func httpReq(method string, url string, bodysize int64, headers []header) func() {
-	file := postData[:bodysize]
+	//file := postData[:bodysize]
 	return func() {
 		var req *http.Request
-
+		pr, pw := io.Pipe()
+		go func() {
+			for i := int64(0); i < bodysize/DataArraySize; i++ {
+				pw.Write(postData)
+			}
+			if bodysize%DataArraySize != 0 {
+				pw.Write(postData[:(bodysize % DataArraySize)])
+			}
+			pw.Close()
+		}()
 		start := boomer.Now()
-		req, _ = http.NewRequest(method, url, bytes.NewReader(file))
+		req, _ = http.NewRequest(method, url, pr)
 
 		if headers != nil {
 			for _, header := range headers {
@@ -175,9 +185,6 @@ func init() {
 	log.Println("MaxIdleConnections", maxIdleConnections)
 	testDefinitionsFile = os.Getenv("TEST_DEFINITIONS")
 	log.Println("TestDefinition File", testDefinitionsFile)
-	maxBodySize, _ := strconv.Atoi(os.Getenv("MAX_BODY_SIZE"))
-	postData = make([]byte, maxBodySize)
+	postData = make([]byte, DataArraySize)
 	rand.Read(postData)
-	log.Println("maxBodySize", maxBodySize)
-	log.Println("Data", string(postData[:100]))
 }

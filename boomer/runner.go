@@ -1,7 +1,6 @@
 package boomer
 
 import (
-	"fmt"
 	"log"
 	"os"
 	"runtime/debug"
@@ -47,7 +46,7 @@ func (r *runner) safeRun(fn func()) {
 		err := recover()
 		if err != nil {
 			debug.PrintStack()
-			Events.Publish("request_failure", "unknown", "panic", 0.0, fmt.Sprintf("%v", err))
+			//Events.Publish("request_failure", "unknown", "panic", 0.0, fmt.Sprintf("%v", err))
 		}
 	}()
 	fn()
@@ -206,6 +205,7 @@ func (r *runner) getReady() {
 					log.Printf("Invalid hatch message from master, num_clients is %d, hatch_rate is %d\n",
 						workers, hatchRate)
 				} else {
+					r.stop()
 					r.startHatching(workers, hatchRate)
 				}
 			case "stop":
