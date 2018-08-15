@@ -1,12 +1,12 @@
 package main
 
 import (
-	"crypto/rand"
 	"encoding/json"
 	"io"
 	"io/ioutil"
 	"log"
 	"math"
+	"math/rand"
 	"net/http"
 	"os"
 	"strconv"
@@ -20,17 +20,13 @@ var (
 	maxIdleConnections  int
 	testDefinitionsFile string
 	postData            []byte
+	keepAlive           bool
 )
 
 const (
 	RequestTimeout int   = 0
 	DataArraySize  int64 = 10000000
 )
-
-// init HTTPClient
-func init() {
-	httpClient = createHTTPClient()
-}
 
 type weightParams struct {
 	magnitude int
@@ -50,6 +46,7 @@ type Test struct {
 	Body    int64        `json:"body,omitempty"`
 	Weight  weightParams `json:"weight,omitempty"`
 	Method  string       `json:"method,omitempty"`
+	Wait    int16        `json:"wait,omitempty"`
 }
 
 type suite struct {
@@ -57,10 +54,13 @@ type suite struct {
 }
 
 func createHTTPClient() *http.Client {
+	log.Println("KEEP_ALIVE", keepAlive)
+
 	client := &http.Client{
 		Transport: &http.Transport{
 			MaxIdleConnsPerHost: maxIdleConnections,
 			MaxIdleConns:        maxIdleConnections,
+			DisableKeepAlives:   keepAlive,
 		},
 		Timeout: time.Duration(RequestTimeout) * time.Second,
 	}
@@ -68,26 +68,7 @@ func createHTTPClient() *http.Client {
 	return client
 }
 
-func httpget(url string, headers []header) {
-
-	start := boomer.Now()
-	resp, err := http.Get(url)
-	elapsed := boomer.Now() - start
-
-	if err != nil {
-		boomer.Events.Publish("request_failure", "get", url, elapsed, err.Error())
-	} else {
-		defer resp.Body.Close()
-		ioutil.ReadAll(resp.Body)
-		if resp.StatusCode < 200 || resp.StatusCode > 299 {
-			boomer.Events.Publish("request_failure", "get", url, elapsed, strconv.Itoa(resp.StatusCode))
-		} else {
-			boomer.Events.Publish("request_success", "get", url, elapsed, resp.ContentLength)
-		}
-	}
-}
-
-func httpReq(method string, url string, bodysize int64, headers []header) func() {
+func httpReq(method string, url string, bodysize int64, headers []header, wait int16) func() {
 	//file := postData[:bodysize]
 	return func() {
 		var req *http.Request
@@ -103,7 +84,9 @@ func httpReq(method string, url string, bodysize int64, headers []header) func()
 		}()
 		start := boomer.Now()
 		req, _ = http.NewRequest(method, url, pr)
-
+		if method != "GET" {
+			req.Close = true
+		}
 		if headers != nil {
 			for _, header := range headers {
 				req.Header.Set(header.name, string(postData[:header.value]))
@@ -111,7 +94,7 @@ func httpReq(method string, url string, bodysize int64, headers []header) func()
 			log.Println("in headers")
 		}
 
-		resp, err := http.DefaultClient.Do(req)
+		resp, err := httpClient.Do(req)
 		elapsed := boomer.Now() - start
 		if elapsed < 0 {
 			elapsed = 0
@@ -129,7 +112,7 @@ func httpReq(method string, url string, bodysize int64, headers []header) func()
 				log.Println(string(body))
 			}
 		}
-
+		time.Sleep(time.Duration(wait) * time.Second)
 	}
 }
 
@@ -148,7 +131,7 @@ func WeightFn(params weightParams) func() int {
 }
 
 func getTaskParams(testDefinition Test) *boomer.Task {
-	fn := httpReq(testDefinition.Method, testDefinition.Url, testDefinition.Body, testDefinition.Headers)
+	fn := httpReq(testDefinition.Method, testDefinition.Url, testDefinition.Body, testDefinition.Headers, testDefinition.Wait)
 	weightFn := WeightFn(testDefinition.Weight)
 	task := &boomer.Task{
 		Name:     testDefinition.Url,
@@ -156,7 +139,7 @@ func getTaskParams(testDefinition Test) *boomer.Task {
 		Fn:       fn,
 	}
 	//taskJson, _ := json.Marshal(task)
-	log.Println(testDefinition.Method, testDefinition.Url, testDefinition.Body)
+	log.Println(testDefinition.Method, testDefinition.Url, testDefinition.Body, testDefinition.Wait)
 	return task
 }
 
@@ -177,6 +160,12 @@ func main() {
 		taskList = append(taskList, getTaskParams(testDefinition))
 	}
 
+	// Shuffle taskList
+	for i := len(taskList) - 1; i > 0; i-- {
+		j := rand.Intn(i + 1)
+		taskList[i], taskList[j] = taskList[j], taskList[i]
+	}
+
 	boomer.Run(taskList...)
 }
 
@@ -185,6 +174,12 @@ func init() {
 	log.Println("MaxIdleConnections", maxIdleConnections)
 	testDefinitionsFile = os.Getenv("TEST_DEFINITIONS")
 	log.Println("TestDefinition File", testDefinitionsFile)
+	if ka, err := strconv.ParseBool(os.Getenv("KEEP_ALIVE")); err == nil {
+		keepAlive = !ka
+	} else {
+		keepAlive = true
+	}
+	log.Println("KEEP_ALIVE", keepAlive)
 	postData = make([]byte, DataArraySize)
-	rand.Read(postData)
+	httpClient = createHTTPClient()
 }

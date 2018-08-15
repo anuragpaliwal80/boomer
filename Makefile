@@ -1,5 +1,5 @@
 .PHONY: dev build run
-
+VERSION=0.11
 default: dev
 
 dev:
@@ -12,10 +12,10 @@ dev:
 	boomer-dev
 
 build:
-	docker build -t abhisheknsit/boomer .
+	docker build -t abhisheknsit/boomer:$(VERSION) .
 
 run: build
 	docker run -it --rm boomer
 
 release: build
-	docker push abhisheknsit/boomer
+	docker push abhisheknsit/boomer:$(VERSION)

@@ -109,6 +109,13 @@ func (r *runner) spawnGoRoutines(spawnCount int, quit chan bool) {
 			}
 			atomic.AddInt32(&r.numClients, 1)
 			go func(index int) {
+				defer func() {
+					// don't panic
+					err := recover()
+					if err != nil {
+						debug.PrintStack()
+					}
+				}()
 				var fn func()
 				for {
 					select {
