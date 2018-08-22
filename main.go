@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/abhisheknsit/boomer/boomer"
+	"github.com/tcnksm/go-httpstat"
 )
 
 var (
@@ -69,6 +70,7 @@ func createHTTPClient() *http.Client {
 }
 
 func httpReq(method string, url string, bodysize int64, headers []header, wait int16) func() {
+	log.Println("Inside the http req")
 	//file := postData[:bodysize]
 	return func() {
 		var req *http.Request
@@ -93,8 +95,19 @@ func httpReq(method string, url string, bodysize int64, headers []header, wait i
 			}
 			log.Println("in headers")
 		}
+		//Using http stat and handing over the request to the context
+		var result httpstat.Result
+		ctxt := httpstat.WithHTTPStat(req.Context(), &result)
+		req = req.WithContext(ctxt)
 
 		resp, err := httpClient.Do(req)
+		log.Printf("Content transfer: %d ms", int(result.ContentTransfer(time.Now())/time.Millisecond))
+		log.Printf("DNS lookup: %d ms", int(result.DNSLookup/time.Millisecond))
+		log.Printf("TCP connection: %d ms", int(result.TCPConnection/time.Millisecond))
+		log.Printf("TLS handshake: %d ms", int(result.TLSHandshake/time.Millisecond))
+		log.Printf("Server processing: %d ms", int(result.ServerProcessing/time.Millisecond))
+
+		result.End(time.Now())
 		elapsed := boomer.Now() - start
 		if elapsed < 0 {
 			elapsed = 0
