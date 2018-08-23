@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/signal"
 	"runtime"
+	"strconv"
 	"strings"
 	"syscall"
 )
@@ -73,10 +74,12 @@ var maxRPS int64
 var maxRPSThreshold int64
 var maxRPSEnabled = false
 var maxRPSControlChannel = make(chan bool)
+var hatchTime = 1
 var weightSyncSeconds int64
 
 func init() {
 	runTasks = flag.String("run-tasks", "", "Run tasks without connecting to the master, multiply tasks is separated by comma. Usually, it's for debug purpose.")
 	flag.Int64Var(&maxRPS, "max-rps", 0, "Max RPS that boomer can generate.")
 	flag.Int64Var(&weightSyncSeconds, "weight-sync-seconds", 120, "Time in seconds after weights for tasks are evaluated again")
+	hatchTime, _ = strconv.Atoi(os.Getenv("HATCH_TIME_SEC"))
 }

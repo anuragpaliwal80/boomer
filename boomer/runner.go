@@ -105,7 +105,7 @@ func (r *runner) spawnGoRoutines(spawnCount int, quit chan bool) {
 			return
 		default:
 			if j%r.hatchRate == 0 {
-				time.Sleep(1 * time.Second)
+				time.Sleep(time.Duration(hatchTime) * time.Second)
 			}
 			atomic.AddInt32(&r.numClients, 1)
 			go func(index int) {
