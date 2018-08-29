@@ -21,11 +21,12 @@ var (
 	testDefinitionsFile string
 	postData            []byte
 	keepAlive           bool
+	dataArraySize       int64
+	throughPutWait      int
 )
 
 const (
-	RequestTimeout int   = 0
-	DataArraySize  int64 = 10000000
+	RequestTimeout int = 0
 )
 
 type weightParams struct {
@@ -74,11 +75,12 @@ func httpReq(method string, url string, bodysize int64, headers []header, wait i
 		var req *http.Request
 		pr, pw := io.Pipe()
 		go func() {
-			for i := int64(0); i < bodysize/DataArraySize; i++ {
+			for i := int64(0); i < bodysize/dataArraySize; i++ {
 				pw.Write(postData)
+				time.Sleep(time.Duration(throughPutWait) * time.Millisecond)
 			}
-			if bodysize%DataArraySize != 0 {
-				pw.Write(postData[:(bodysize % DataArraySize)])
+			if bodysize%dataArraySize != 0 {
+				pw.Write(postData[:(bodysize % dataArraySize)])
 			}
 			pw.Close()
 		}()
@@ -173,6 +175,14 @@ func init() {
 	maxIdleConnections, _ = strconv.Atoi(os.Getenv("MAX_IDLE_CONNECTIONS"))
 	log.Println("MaxIdleConnections", maxIdleConnections)
 	testDefinitionsFile = os.Getenv("TEST_DEFINITIONS")
+	dataArraySize, err := strconv.ParseInt(os.Getenv("DATA_ARRAY_SIZE"), 10, 0)
+	if err != nil {
+		dataArraySize = 10000000
+	}
+	throughPutWait, err = strconv.Atoi(os.Getenv("THROUGH_PUT_WAIT"))
+	if err != nil {
+		throughPutWait = 0
+	}
 	log.Println("TestDefinition File", testDefinitionsFile)
 	if ka, err := strconv.ParseBool(os.Getenv("KEEP_ALIVE")); err == nil {
 		keepAlive = !ka
@@ -180,6 +190,6 @@ func init() {
 		keepAlive = true
 	}
 	log.Println("KEEP_ALIVE", keepAlive)
-	postData = make([]byte, DataArraySize)
+	postData = make([]byte, dataArraySize)
 	httpClient = createHTTPClient()
 }
