@@ -12,7 +12,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/anuragpaliwal80/boomer/boomer"
+	"boomer/boomer"
 )
 
 var (

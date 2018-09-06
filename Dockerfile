@@ -1,7 +1,7 @@
 FROM golang:1.9.4
 
-ADD . /go/src/github.com/anuragpaliwal80/boomer
-WORKDIR /go/src/github.com/anuragpaliwal80/boomer
+ADD . /go/src/boomer
+WORKDIR /go/src/boomer
 
 RUN curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
 # Recompile everything and create a static binary
