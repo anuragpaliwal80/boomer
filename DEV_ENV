@@ -2,6 +2,6 @@ LOCUST_MASTER=localhost
 LOCUST_MASTER_PORT=5557
 LOCUST_MASTER_WEB=8089
 MAX_RPS=0
-TEST_DEFINITIONS=/go/src/github.com/abhisheknsit/boomer/test-definitions/testfile.json
+TEST_DEFINITIONS=/boomer/test-definitions/testfile.json
 TEST_SUITES=suite-scale
 MAX_BODY_SIZE=1073741825

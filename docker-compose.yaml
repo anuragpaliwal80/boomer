@@ -17,7 +17,7 @@ services:
       - "locust-master:locust-master"
       - "nginx:nginx"
   locust-master:
-    image: abhisheknsit/locustio:1.0.25
+    image: anuragpaliwal80/locust:1.0.5
     ports:
       - "8089:8089"
       - "5557:5557"
