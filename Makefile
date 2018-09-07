@@ -1,5 +1,5 @@
 DOCKER  = docker
-VERSION = 1.0.0
+VERSION = 1.0.1
 REPO    = anuragpaliwal80/boomer
 
 .PHONY: docker-image
