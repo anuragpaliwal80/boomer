@@ -71,6 +71,12 @@ func createHTTPClient() *http.Client {
 
 func httpReq(method string, url string, bodysize int64, headers []header, wait int16) func() {
 	//file := postData[:bodysize]
+	if dataArraySize == 0 {
+		log.Println("DataArraySize was 0")
+		dataArraySize, _ = strconv.ParseInt(os.Getenv("DATA_ARRAY_SIZE"), 10, 0)
+		throughPutWait, _ = strconv.Atoi(os.Getenv("THROUGH_PUT_WAIT"))
+
+	}
 	return func() {
 		var req *http.Request
 		pr, pw := io.Pipe()
@@ -110,11 +116,11 @@ func httpReq(method string, url string, bodysize int64, headers []header, wait i
 			if resp.StatusCode < 200 || resp.StatusCode > 299 {
 				boomer.Events.Publish("request_failure", method, url, elapsed, strconv.Itoa(resp.StatusCode))
 			} else {
-				boomer.Events.Publish("request_success", method, url, elapsed, resp.ContentLength)
+				boomer.Events.Publish("request_success", method, url, elapsed, bodysize)
 				log.Println(string(body))
 			}
 		}
-		time.Sleep(time.Duration(wait) * time.Second)
+		time.Sleep(time.Duration(wait) * time.Millisecond)
 	}
 }
 
@@ -175,14 +181,19 @@ func init() {
 	maxIdleConnections, _ = strconv.Atoi(os.Getenv("MAX_IDLE_CONNECTIONS"))
 	log.Println("MaxIdleConnections", maxIdleConnections)
 	testDefinitionsFile = os.Getenv("TEST_DEFINITIONS")
-	dataArraySize, err := strconv.ParseInt(os.Getenv("DATA_ARRAY_SIZE"), 10, 0)
+	var err error
+	dataArraySize, err = strconv.ParseInt(os.Getenv("DATA_ARRAY_SIZE"), 10, 0)
 	if err != nil {
+		log.Println("Error Setting DataArray Size", err.Error())
 		dataArraySize = 10000000
 	}
+	log.Println("DataArray Size", dataArraySize)
 	throughPutWait, err = strconv.Atoi(os.Getenv("THROUGH_PUT_WAIT"))
 	if err != nil {
+		log.Println("Error Setting throughPutWait", err.Error())
 		throughPutWait = 0
 	}
+	log.Println("ThroughputWait:", throughPutWait)
 	log.Println("TestDefinition File", testDefinitionsFile)
 	if ka, err := strconv.ParseBool(os.Getenv("KEEP_ALIVE")); err == nil {
 		keepAlive = !ka
