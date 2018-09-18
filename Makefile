@@ -1,5 +1,5 @@
 .PHONY: dev build run
-VERSION=0.18
+VERSION=0.19
 default: dev
 
 dev:
