@@ -101,16 +101,21 @@ func httpReq(method string, url string, bodysize int64, headers []header, wait i
 		req = req.WithContext(ctxt)
 
 		resp, err := httpClient.Do(req)
-		log.Printf("Content transfer: %d ms", int(result.ContentTransfer(time.Now())/time.Millisecond))
-		log.Printf("DNS lookup: %d ms", int(result.DNSLookup/time.Millisecond))
-		log.Printf("TCP connection: %d ms", int(result.TCPConnection/time.Millisecond))
-		log.Printf("TLS handshake: %d ms", int(result.TLSHandshake/time.Millisecond))
-		log.Printf("Server processing: %d ms", int(result.ServerProcessing/time.Millisecond))
-
 		result.End(time.Now())
 		elapsed := boomer.Now() - start
 		if elapsed < 0 {
 			elapsed = 0
+		}
+		reqIns := boomer.RequestInsights {
+			int64(result.DNSLookup / time.Millisecond),
+			int64(result.TCPConnection / time.Millisecond),
+			int64(result.TLSHandshake / time.Millisecond),
+			int64(result.ServerProcessing / time.Millisecond),
+			int64(result.NameLookup / time.Millisecond),
+			int64(result.Connect / time.Millisecond),
+			int64(result.Pretransfer / time.Millisecond),
+			int64(result.StartTransfer / time.Millisecond),
+			elapsed,
 		}
 		if err != nil {
 			log.Println(err)
@@ -121,7 +126,7 @@ func httpReq(method string, url string, bodysize int64, headers []header, wait i
 			if resp.StatusCode < 200 || resp.StatusCode > 299 {
 				boomer.Events.Publish("request_failure", method, url, elapsed, strconv.Itoa(resp.StatusCode))
 			} else {
-				boomer.Events.Publish("request_success", method, url, elapsed, resp.ContentLength)
+				boomer.Events.Publish("request_success", method, url, reqIns, resp.ContentLength)
 				log.Println(string(body))
 			}
 		}
