@@ -14,6 +14,7 @@ import (
 
 	"github.com/abhisheknsit/boomer/boomer"
 	"github.com/tcnksm/go-httpstat"
+	"github.com/newrelic/go-agent"
 )
 
 var (
@@ -22,11 +23,13 @@ var (
 	testDefinitionsFile string
 	postData            []byte
 	keepAlive           bool
+	dataArraySize       int64
+	throughPutWait      int
+	b                   []byte
 )
 
 const (
-	RequestTimeout int   = 0
-	DataArraySize  int64 = 10000000
+	RequestTimeout int = 0
 )
 
 type weightParams struct {
@@ -69,18 +72,26 @@ func createHTTPClient() *http.Client {
 	return client
 }
 
-func httpReq(method string, url string, bodysize int64, headers []header, wait int16) func() {
-	log.Println("Inside the http req")
+func httpReq(method string, url string, bodysize int64, headers []header, wait1 int16) func() {
 	//file := postData[:bodysize]
+	if dataArraySize == 0 {
+		log.Println("DataArraySize was 0")
+		dataArraySize, _ = strconv.ParseInt(os.Getenv("DATA_ARRAY_SIZE"), 10, 0)
+		throughPutWait, _ = strconv.Atoi(os.Getenv("THROUGH_PUT_WAIT"))
+
+	}
 	return func() {
 		var req *http.Request
+		var elapsed int64
+		var wait int64
 		pr, pw := io.Pipe()
 		go func() {
-			for i := int64(0); i < bodysize/DataArraySize; i++ {
+			for i := int64(0); i < bodysize/dataArraySize; i++ {
 				pw.Write(postData)
+				time.Sleep(time.Duration(throughPutWait) * time.Millisecond)
 			}
-			if bodysize%DataArraySize != 0 {
-				pw.Write(postData[:(bodysize % DataArraySize)])
+			if bodysize%dataArraySize != 0 {
+				pw.Write(postData[:(bodysize % dataArraySize)])
 			}
 			pw.Close()
 		}()
@@ -102,7 +113,7 @@ func httpReq(method string, url string, bodysize int64, headers []header, wait i
 
 		resp, err := httpClient.Do(req)
 		result.End(time.Now())
-		elapsed := boomer.Now() - start
+		elapsed = boomer.Now() - start
 		if elapsed < 0 {
 			elapsed = 0
 		}
@@ -119,18 +130,37 @@ func httpReq(method string, url string, bodysize int64, headers []header, wait i
 		}
 		if err != nil {
 			log.Println(err)
+			elapsed = boomer.Now() - start
+			if elapsed < 0 {
+				elapsed = 0
+			}
 			boomer.Events.Publish("request_failure", method, url, elapsed, err.Error())
 		} else {
 			defer resp.Body.Close()
-			body, _ := ioutil.ReadAll(resp.Body)
+			for {
+				_, err = resp.Body.Read(b)
+				if err != nil {
+					break
+				}
+			}
+
+			_, _ = ioutil.ReadAll(resp.Body)
+			elapsed = boomer.Now() - start
+			if elapsed < 0 {
+				elapsed = 0
+			}
 			if resp.StatusCode < 200 || resp.StatusCode > 299 {
 				boomer.Events.Publish("request_failure", method, url, elapsed, strconv.Itoa(resp.StatusCode))
 			} else {
 				boomer.Events.Publish("request_success", method, url, reqIns, resp.ContentLength)
-				log.Println(string(body))
 			}
 		}
-		time.Sleep(time.Duration(wait) * time.Second)
+		if elapsed < 1000 {
+			wait = 1000 - elapsed
+		} else {
+			wait = 0
+		}
+		time.Sleep(time.Duration(wait) * time.Millisecond)
 	}
 }
 
@@ -162,6 +192,9 @@ func getTaskParams(testDefinition Test) *boomer.Task {
 }
 
 func main() {
+	config := newrelic.NewConfig(os.Getenv("NEW_RELIC_APPNAME"), os.Getenv("NEW_RELIC_LICENSE"))
+	_, _ = newrelic.NewApplication(config)
+
 	log.Println("Executing main function")
 	rawTestDefinitions, _ := ioutil.ReadFile(testDefinitionsFile)
 	log.Println("FileContent", string(rawTestDefinitions))
@@ -191,6 +224,19 @@ func init() {
 	maxIdleConnections, _ = strconv.Atoi(os.Getenv("MAX_IDLE_CONNECTIONS"))
 	log.Println("MaxIdleConnections", maxIdleConnections)
 	testDefinitionsFile = os.Getenv("TEST_DEFINITIONS")
+	var err error
+	dataArraySize, err = strconv.ParseInt(os.Getenv("DATA_ARRAY_SIZE"), 10, 0)
+	if err != nil {
+		log.Println("Error Setting DataArray Size", err.Error())
+		dataArraySize = 10000000
+	}
+	log.Println("DataArray Size", dataArraySize)
+	throughPutWait, err = strconv.Atoi(os.Getenv("THROUGH_PUT_WAIT"))
+	if err != nil {
+		log.Println("Error Setting throughPutWait", err.Error())
+		throughPutWait = 0
+	}
+	log.Println("ThroughputWait:", throughPutWait)
 	log.Println("TestDefinition File", testDefinitionsFile)
 	if ka, err := strconv.ParseBool(os.Getenv("KEEP_ALIVE")); err == nil {
 		keepAlive = !ka
@@ -198,6 +244,7 @@ func init() {
 		keepAlive = true
 	}
 	log.Println("KEEP_ALIVE", keepAlive)
-	postData = make([]byte, DataArraySize)
+	postData = make([]byte, dataArraySize)
+	b = make([]byte, dataArraySize)
 	httpClient = createHTTPClient()
 }

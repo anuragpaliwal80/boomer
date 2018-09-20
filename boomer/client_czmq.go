@@ -5,6 +5,7 @@ package boomer
 import (
 	"fmt"
 	"log"
+	"os"
 
 	"github.com/zeromq/goczmq"
 )
@@ -36,11 +37,13 @@ func newZmqClient(masterHost string, masterPort int) *czmqSocketClient {
 	pushConn, err := goczmq.NewPush(tcpAddr)
 	if err != nil {
 		log.Fatalf("Failed to create zeromq pusher, %s", err)
+		os.Exit(1)
 	}
 	tcpAddr = fmt.Sprintf(">tcp://%s:%d", masterHost, masterPort+1)
 	pullConn, err := goczmq.NewPull(tcpAddr)
 	if err != nil {
 		log.Fatalf("Failed to create zeromq puller, %s", err)
+		os.Exit(1)
 	}
 	log.Println("ZMQ sockets connected")
 	newClient := &czmqSocketClient{
@@ -65,9 +68,12 @@ func (c *czmqSocketClient) send() {
 	for {
 		select {
 		case msg := <-toMaster:
-			c.sendMessage(msg)
+			err := c.sendMessage(msg)
 			if msg.Type == "quit" {
 				disconnectedFromMaster <- true
+			} else if msg.Type == "client_ready" && err != nil {
+				log.Fatalf("Failed to send client ready message, %s", err)
+				os.Exit(1)
 			}
 		}
 	}

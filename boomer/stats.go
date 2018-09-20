@@ -325,10 +325,10 @@ type requestFailure struct {
 }
 
 var stats = newRequestStats()
-var requestSuccessChannel = make(chan *requestSuccess, 100)
-var requestFailureChannel = make(chan *requestFailure, 100)
+var requestSuccessChannel = make(chan *requestSuccess, 1000)
+var requestFailureChannel = make(chan *requestFailure, 1000)
 var clearStatsChannel = make(chan bool)
-var messageToRunner = make(chan map[string]interface{}, 10)
+var messageToRunner = make(chan map[string]interface{}, 100)
 
 func init() {
 	stats.entries = make(map[string]*statsEntry)
