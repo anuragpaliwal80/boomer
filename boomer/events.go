@@ -24,11 +24,11 @@ func convertResponseTime(origin interface{}) int64 {
 	return responseTime
 }
 
-func requestSuccessHandler(requestType string, name string, responseTime interface{}, responseLength int64) {
+func requestSuccessHandler(requestType string, name string, requestInsights RequestInsights, responseLength int64) {
 	requestSuccessChannel <- &requestSuccess{
 		requestType:    requestType,
 		name:           name,
-		responseTime:   convertResponseTime(responseTime),
+		requestIns:   requestInsights,
 		responseLength: responseLength,
 	}
 }

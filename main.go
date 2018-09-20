@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/abhisheknsit/boomer/boomer"
+	"github.com/tcnksm/go-httpstat"
 	"github.com/newrelic/go-agent"
 )
 
@@ -105,8 +106,28 @@ func httpReq(method string, url string, bodysize int64, headers []header, wait1 
 			}
 			log.Println("in headers")
 		}
+		//Using http stat and handing over the request to the context
+		var result httpstat.Result
+		ctxt := httpstat.WithHTTPStat(req.Context(), &result)
+		req = req.WithContext(ctxt)
 
 		resp, err := httpClient.Do(req)
+		result.End(time.Now())
+		elapsed = boomer.Now() - start
+		if elapsed < 0 {
+			elapsed = 0
+		}
+		reqIns := boomer.RequestInsights {
+			int64(result.DNSLookup / time.Millisecond),
+			int64(result.TCPConnection / time.Millisecond),
+			int64(result.TLSHandshake / time.Millisecond),
+			int64(result.ServerProcessing / time.Millisecond),
+			int64(result.NameLookup / time.Millisecond),
+			int64(result.Connect / time.Millisecond),
+			int64(result.Pretransfer / time.Millisecond),
+			int64(result.StartTransfer / time.Millisecond),
+			elapsed,
+		}
 		if err != nil {
 			log.Println(err)
 			elapsed = boomer.Now() - start
@@ -131,7 +152,7 @@ func httpReq(method string, url string, bodysize int64, headers []header, wait1 
 			if resp.StatusCode < 200 || resp.StatusCode > 299 {
 				boomer.Events.Publish("request_failure", method, url, elapsed, strconv.Itoa(resp.StatusCode))
 			} else {
-				boomer.Events.Publish("request_success", method, url, elapsed, resp.ContentLength)
+				boomer.Events.Publish("request_success", method, url, reqIns, resp.ContentLength)
 			}
 		}
 		if elapsed < 1000 {
