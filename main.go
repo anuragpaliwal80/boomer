@@ -37,13 +37,13 @@ type weightParams struct {
 }
 
 type header struct {
-	name  string
-	value int64
+	Name  string
+	Value int64
 }
 
 type Test struct {
 	Url     string       `json:"url,omitempty"`
-	Headers []header     `json:"headers,omitempty"`
+	Headers []header     `json:"header,omitempty"`
 	Body    int64        `json:"body,omitempty"`
 	Weight  weightParams `json:"weight,omitempty"`
 	Method  string       `json:"method,omitempty"`
@@ -97,9 +97,9 @@ func httpReq(method string, url string, bodysize int64, headers []header, wait i
 		}
 		if headers != nil {
 			for _, header := range headers {
-				req.Header.Set(header.name, string(postData[:header.value]))
+				req.Header.Set(header.Name, string(postData[:header.Value]))
+				log.Println("Setting header: ", header.Name)
 			}
-			log.Println("in headers")
 		}
 
 		resp, err := httpClient.Do(req)
