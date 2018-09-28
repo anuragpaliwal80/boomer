@@ -2,36 +2,73 @@
 
 
 [[projects]]
+  digest = "1:33c6f6a0ee7d594d07ad9b67e93266f8a859ab2ddd882f8be19207162f40cce8"
   name = "github.com/asaskevich/EventBus"
   packages = ["."]
+  pruneopts = ""
   revision = "d46933a94f05c6657d7b923fcf5ac563ee37ec79"
 
 [[projects]]
   branch = "master"
+  digest = "1:a5e4cfbffecf04122b1f1e5d7f437d08d1f06565bfac574d3c9349c6ac791daa"
   name = "github.com/myzhan/boomer"
   packages = ["."]
+  pruneopts = ""
   revision = "3f1c8700720799ed84713d59b901c12f7a95efcb"
 
 [[projects]]
+  digest = "1:896fa40f307b91a53bd675225a653cde46e9183f165efd2df1b4bffe02dab40f"
+  name = "github.com/newrelic/go-agent"
+  packages = [
+    ".",
+    "internal",
+    "internal/cat",
+    "internal/jsonx",
+    "internal/logger",
+    "internal/sysinfo",
+    "internal/utilization",
+  ]
+  pruneopts = ""
+  revision = "46d73e6be8b4faeee70850d0df829e4fe00d6819"
+  version = "v2.1.0"
+
+[[projects]]
+  digest = "1:2e7f653483e51243b6cd6de60ce39bde0d6927d10a3c24295ab0f82cb1efeae2"
   name = "github.com/ugorji/go"
   packages = ["codec"]
+  pruneopts = ""
   revision = "b4c50a2b199d93b13dc15e78929cfb23bfdf21ab"
   version = "v1.1.1"
 
 [[projects]]
+  digest = "1:9e3e121a95ec2f0db421ccb5094c50e32555b84f41de1f232c18f8fd6577123e"
   name = "github.com/zeromq/goczmq"
   packages = ["."]
+  pruneopts = ""
   revision = "98ab09146269d98bc3e427046f5fc222c4134e0b"
   version = "v4.1.0"
 
 [[projects]]
+  digest = "1:9212c8bb853dd5c05382b6281c435771bff8fe3b4a8ff40e3fd755988ba66c8c"
   name = "github.com/zeromq/gomq"
-  packages = [".","zmtp"]
+  packages = [
+    ".",
+    "zmtp",
+  ]
+  pruneopts = ""
   revision = "44a15e88b2fd71315154c8593ab778e0b099c55b"
 
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "2b91f5433af82728428bfaa3c9d83cf3256b5a8138a6bf83800198e349ea1983"
+  input-imports = [
+    "github.com/asaskevich/EventBus",
+    "github.com/myzhan/boomer",
+    "github.com/newrelic/go-agent",
+    "github.com/ugorji/go/codec",
+    "github.com/zeromq/goczmq",
+    "github.com/zeromq/gomq",
+    "github.com/zeromq/gomq/zmtp",
+  ]
   solver-name = "gps-cdcl"
   solver-version = 1

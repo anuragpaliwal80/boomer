@@ -13,6 +13,8 @@ import (
 	"time"
 
 	"github.com/abhisheknsit/boomer/boomer"
+	"github.com/tcnksm/go-httpstat"
+	"github.com/newrelic/go-agent"
 )
 
 var (
@@ -23,6 +25,7 @@ var (
 	keepAlive           bool
 	dataArraySize       int64
 	throughPutWait      int
+	b                   []byte
 )
 
 const (
@@ -69,7 +72,7 @@ func createHTTPClient() *http.Client {
 	return client
 }
 
-func httpReq(method string, url string, bodysize int64, headers []header, wait int16) func() {
+func httpReq(method string, url string, bodysize int64, headers []header, wait1 int16) func() {
 	//file := postData[:bodysize]
 	if dataArraySize == 0 {
 		log.Println("DataArraySize was 0")
@@ -79,6 +82,8 @@ func httpReq(method string, url string, bodysize int64, headers []header, wait i
 	}
 	return func() {
 		var req *http.Request
+		var elapsed int64
+		var wait int64
 		pr, pw := io.Pipe()
 		go func() {
 			for i := int64(0); i < bodysize/dataArraySize; i++ {
@@ -101,24 +106,59 @@ func httpReq(method string, url string, bodysize int64, headers []header, wait i
 				log.Println("Setting header: ", header.Name)
 			}
 		}
+		//Using http stat and handing over the request to the context
+		var result httpstat.Result
+		ctxt := httpstat.WithHTTPStat(req.Context(), &result)
+		req = req.WithContext(ctxt)
 
 		resp, err := httpClient.Do(req)
-		elapsed := boomer.Now() - start
+		result.End(time.Now())
+		elapsed = boomer.Now() - start
 		if elapsed < 0 {
 			elapsed = 0
 		}
+		reqIns := boomer.RequestInsights {
+			int64(result.DNSLookup / time.Millisecond),
+			int64(result.TCPConnection / time.Millisecond),
+			int64(result.TLSHandshake / time.Millisecond),
+			int64(result.ServerProcessing / time.Millisecond),
+			int64(result.NameLookup / time.Millisecond),
+			int64(result.Connect / time.Millisecond),
+			int64(result.Pretransfer / time.Millisecond),
+			int64(result.StartTransfer / time.Millisecond),
+			elapsed,
+		}
 		if err != nil {
 			log.Println(err)
+			elapsed = boomer.Now() - start
+			if elapsed < 0 {
+				elapsed = 0
+			}
 			boomer.Events.Publish("request_failure", method, url, elapsed, err.Error())
 		} else {
 			defer resp.Body.Close()
-			body, _ := ioutil.ReadAll(resp.Body)
+			for {
+				_, err = resp.Body.Read(b)
+				if err != nil {
+					break
+				}
+			}
+
+			_, _ = ioutil.ReadAll(resp.Body)
+			elapsed = boomer.Now() - start
+			if elapsed < 0 {
+				elapsed = 0
+			}
 			if resp.StatusCode < 200 || resp.StatusCode > 299 {
 				boomer.Events.Publish("request_failure", method, url, elapsed, strconv.Itoa(resp.StatusCode))
 			} else {
-				boomer.Events.Publish("request_success", method, url, elapsed, bodysize)
-				log.Println(string(body))
+				boomer.Events.Publish("request_success", method, url, reqIns, resp.ContentLength)
 			}
+		}
+		if elapsed < 1000 {
+			wait = 1000 - elapsed
+		} else {
+			wait = 0
 		}
 		time.Sleep(time.Duration(wait) * time.Millisecond)
 	}
@@ -155,6 +195,9 @@ func getTaskParams(testDefinition Test) *boomer.Task {
 }
 
 func main() {
+	config := newrelic.NewConfig(os.Getenv("NEW_RELIC_APPNAME"), os.Getenv("NEW_RELIC_LICENSE"))
+	_, _ = newrelic.NewApplication(config)
+
 	log.Println("Executing main function")
 	rawTestDefinitions, _ := ioutil.ReadFile(testDefinitionsFile)
 	log.Println("FileContent", string(rawTestDefinitions))
@@ -205,5 +248,6 @@ func init() {
 	}
 	log.Println("KEEP_ALIVE", keepAlive)
 	postData = make([]byte, dataArraySize)
+	b = make([]byte, dataArraySize)
 	httpClient = createHTTPClient()
 }
