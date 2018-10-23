@@ -120,11 +120,9 @@ func httpReq(method string, url string, bodysize int64, headers []header, wait1 
 		var result httpstat.Result
 		ctxt := httpstat.WithHTTPStat(req.Context(), &result)
 		req = req.WithContext(ctxt)
-		log.Println("111")
 		resp, err := httpClient.Do(req)
 		result.End(time.Now())
 		elapsed = boomer.Now() - start
-		log.Println("222")
 		if elapsed < 0 {
 			elapsed = 0
 		}

@@ -1,6 +1,6 @@
 [{
-      "url": "http://www.adobe.com",
-      "header": [{"Name": "abc", "Value": 10}],
+      "url": "http://nginx:8080",
+      "header": [{"Name": "abc", "Value": 10}, {"name": "def", "value": 300}],
       "body": 1073741824,
       "method":"POST",
       "weight": {
