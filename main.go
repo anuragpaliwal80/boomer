@@ -113,7 +113,7 @@ func httpReq(method string, url string, bodysize int64, headers []header, wait1 
 			for _, header := range headers {
 				value := RandStringBytes(header.Value)
 				req.Header.Set(header.Name, value)
-				log.Println("Setting header: ", header.Name, " with value: ", value)
+				log.Println("Setting header: ", header.Name)
 			}
 		}
 		//Using http stat and handing over the request to the context
