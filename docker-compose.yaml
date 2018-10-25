@@ -11,13 +11,11 @@ services:
       - LOCUST_MASTER_WEB=8089
       - MAX_RPS=0
       - TEST_DEFINITIONS=/tmp/testfile.json
-      - TEST_SUITES=suite-scale
-      - MAX_BODY_SIZE=1073741925
     links:
       - "locust-master:locust-master"
       - "nginx:nginx"
   locust-master:
-    image: abhisheknsit/locustio:1.0.25
+    image: anuragpaliwal80/locust:1.0.5
     ports:
       - "8089:8089"
       - "5557:5557"
@@ -28,7 +26,6 @@ services:
       - LOCUST_MODE=master
       - LOCUST_SCRIPT=/tmp/locustfile.py
       - TARGET_HOST=https://scale-avi.sandbox.cloud.adobe.io
-      - TEST_SUITES=suite-scale110
 
   nginx:
     image: navneetpahwa/npahwa-nginx:latest

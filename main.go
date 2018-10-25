@@ -30,6 +30,7 @@ var (
 
 const (
 	RequestTimeout int = 0
+	letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 )
 
 type weightParams struct {
@@ -40,8 +41,8 @@ type weightParams struct {
 }
 
 type header struct {
-	name  string
-	value int64
+	Name  string
+	Value int64
 }
 
 type Test struct {
@@ -55,6 +56,14 @@ type Test struct {
 
 type suite struct {
 	suite []Test
+}
+
+func RandStringBytes(n int64) string {
+    b := make([]byte, n)
+    for i := range b {
+        b[i] = letterBytes[rand.Intn(len(letterBytes))]
+    }
+    return string(b)
 }
 
 func createHTTPClient() *http.Client {
@@ -102,15 +111,15 @@ func httpReq(method string, url string, bodysize int64, headers []header, wait1 
 		}
 		if headers != nil {
 			for _, header := range headers {
-				req.Header.Set(header.Name, string(postData[:header.Value]))
+				value := RandStringBytes(header.Value)
+				req.Header.Set(header.Name, value)
+				log.Println("Setting header: ", header.Name)
 			}
-			log.Println("in headers")
 		}
 		//Using http stat and handing over the request to the context
 		var result httpstat.Result
 		ctxt := httpstat.WithHTTPStat(req.Context(), &result)
 		req = req.WithContext(ctxt)
-
 		resp, err := httpClient.Do(req)
 		result.End(time.Now())
 		elapsed = boomer.Now() - start
@@ -166,6 +175,8 @@ func httpReq(method string, url string, bodysize int64, headers []header, wait1 
 
 func WeightFn(params weightParams) func() int {
 	return func() (weight int) {
+		log.Println("Inside WeightFn function.", strconv.Itoa(params.Magnitude), 
+			strconv.Itoa(params.Frequency), strconv.Itoa(params.Constant), strconv.Itoa(params.Phase))
 		base := 0.0
 		if params.Frequency != 0 {
 			base = math.Cos(float64(time.Now().Unix())*(2*math.Pi/float64(params.Frequency)) + float64(params.Phase))
@@ -174,6 +185,7 @@ func WeightFn(params weightParams) func() int {
 		if weight < 0 {
 			weight = 0
 		}
+		log.Println("weight is: ", strconv.Itoa(weight))
 		return
 	}
 }

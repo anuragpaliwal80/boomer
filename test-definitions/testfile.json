@@ -1,13 +1,13 @@
 [{
       "url": "http://nginx:8080",
-      "header": [{"name": "abc", "value": 64000}, {"name": "def", "value": 32000}],
+      "header": [{"Name": "abc", "Value": 10}, {"name": "def", "value": 300}],
       "body": 1073741824,
       "method":"POST",
       "weight": {
-        "magnitude":5,
-        "frequency":50,
-        "constant": 10,
-        "phase":1
+        "Magnitude":5,
+        "Frequency":50,
+        "Constant": 10,
+        "Phase":1
       }
 }
 ]
