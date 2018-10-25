@@ -30,6 +30,7 @@ var (
 
 const (
 	RequestTimeout int = 0
+	letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 )
 
 type weightParams struct {
@@ -55,6 +56,14 @@ type Test struct {
 
 type suite struct {
 	suite []Test
+}
+
+func RandStringBytes(n int64) string {
+    b := make([]byte, n)
+    for i := range b {
+        b[i] = letterBytes[rand.Intn(len(letterBytes))]
+    }
+    return string(b)
 }
 
 func createHTTPClient() *http.Client {
@@ -102,9 +111,9 @@ func httpReq(method string, url string, bodysize int64, headers []header, wait1 
 		}
 		if headers != nil {
 			for _, header := range headers {
-				req.Header.Set(header.Name, string(postData[:header.Value]))
+				req.Header.Set(header.Name, RandStringBytes(header.Value))
+				log.Println("Setting header: ", header.Name)
 			}
-			log.Println("in headers")
 		}
 		//Using http stat and handing over the request to the context
 		var result httpstat.Result
