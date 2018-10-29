@@ -1,7 +1,10 @@
 package boomer
 
 import (
-	"time"
+	// "log"
+    "strconv"
+    "strings"
+    "time"
 )
 
 type requestStats struct {
@@ -338,6 +341,12 @@ func init() {
 		for {
 			select {
 			case m := <-requestSuccessChannel:
+				// log.Println("m.requestIns.ElapsedTime1: ", m.requestIns.ElapsedTime)
+				parts := strings.Split(m.name, "d=")
+                if len(parts) >=2 {
+                    delay, _ := strconv.Atoi(parts[1])
+                    m.requestIns.ElapsedTime -= int64(delay)
+				}
 				stats.logRequest(m.requestType, m.name, m.requestIns, m.responseLength)
 			case n := <-requestFailureChannel:
 				stats.logError(n.requestType, n.name, n.error)

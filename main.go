@@ -12,7 +12,8 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/abhisheknsit/boomer/boomer"
+	"boomer/boomer"
+	// "github.com/abhisheknsit/boomer/boomer"
 	"github.com/tcnksm/go-httpstat"
 	"github.com/newrelic/go-agent"
 )
