@@ -1,5 +1,5 @@
 DOCKER  = docker
-VERSION = 1.0.7
+VERSION = 1.0.8
 REPO    = anuragpaliwal80/boomer
 
 .PHONY: docker-image
@@ -9,7 +9,7 @@ docker-image:
 
 .PHONY: docker-push
 docker-push: docker-image
-	@$(DOCKER) push $(REPO):$(VERSION) 
+	@$(DOCKER) push $(REPO):$(VERSION)
 	@$(DOCKER) push $(REPO):latest
 
 .PHONY: dev

@@ -4,6 +4,7 @@ set -eo pipefail
 
 LOCUST=( "./a.out" )
 LOCUST+=(--master-host=$LOCUST_MASTER --master-port=$LOCUST_MASTER_PORT --rpc=zeromq --max-rps=$MAX_RPS)
+echo "${LOCUST[@]}"
 echo "Wait for master"
 counter=0
 while ! wget -qT5 $LOCUST_MASTER:$LOCUST_MASTER_WEB >/dev/null 2>&1; do
@@ -15,6 +16,5 @@ while ! wget -qT5 $LOCUST_MASTER:$LOCUST_MASTER_WEB >/dev/null 2>&1; do
   echo "Waiting for master"
   sleep 5
 done
-echo "${LOCUST[@]}"
 
 exec ${LOCUST[@]}

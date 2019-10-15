@@ -15,7 +15,7 @@ import (
 	"boomer/boomer"
 	// "github.com/abhisheknsit/boomer/boomer"
 	"github.com/tcnksm/go-httpstat"
-	"github.com/newrelic/go-agent"
+	// "github.com/newrelic/go-agent"
 )
 
 var (
@@ -83,18 +83,21 @@ func createHTTPClient() *http.Client {
 }
 
 func httpReq(method string, url string, bodysize int64, headers []header, wait1 int16) func() {
+	// log.Println("Inside httpReq func")
 	//file := postData[:bodysize]
 	if dataArraySize == 0 {
 		log.Println("DataArraySize was 0")
 		dataArraySize, _ = strconv.ParseInt(os.Getenv("DATA_ARRAY_SIZE"), 10, 0)
 		throughPutWait, _ = strconv.Atoi(os.Getenv("THROUGH_PUT_WAIT"))
-
 	}
 	return func() {
+		// start := boomer.Now()
+		// log.Println("Inside func of  httpReq")
 		var req *http.Request
 		var elapsed int64
 		var wait int64
 		pr, pw := io.Pipe()
+
 		go func() {
 			for i := int64(0); i < bodysize/dataArraySize; i++ {
 				pw.Write(postData)
@@ -138,6 +141,7 @@ func httpReq(method string, url string, bodysize int64, headers []header, wait1 
 			int64(result.StartTransfer / time.Millisecond),
 			elapsed,
 		}
+
 		if err != nil {
 			log.Println(err)
 			elapsed = boomer.Now() - start
@@ -147,14 +151,13 @@ func httpReq(method string, url string, bodysize int64, headers []header, wait1 
 			boomer.Events.Publish("request_failure", method, url, elapsed, err.Error())
 		} else {
 			defer resp.Body.Close()
-			for {
-				_, err = resp.Body.Read(b)
-				if err != nil {
-					break
-				}
-			}
-
-			_, _ = ioutil.ReadAll(resp.Body)
+			// for {
+			// 	_, err = resp.Body.Read(b)
+			// 	if err != nil {
+			// 		break
+			// 	}
+			// }
+			// _, _ = ioutil.ReadAll(resp.Body)
 			elapsed = boomer.Now() - start
 			if elapsed < 0 {
 				elapsed = 0
@@ -163,6 +166,10 @@ func httpReq(method string, url string, bodysize int64, headers []header, wait1 
 				boomer.Events.Publish("request_failure", method, url, elapsed, strconv.Itoa(resp.StatusCode))
 			} else {
 				boomer.Events.Publish("request_success", method, url, reqIns, resp.ContentLength)
+			}
+			elapsed = boomer.Now() - start
+			if elapsed < 0 {
+				elapsed = 0
 			}
 		}
 		if elapsed < 1000 {
@@ -176,7 +183,7 @@ func httpReq(method string, url string, bodysize int64, headers []header, wait1 
 
 func WeightFn(params weightParams) func() int {
 	return func() (weight int) {
-		log.Println("Inside WeightFn function.", strconv.Itoa(params.Magnitude), 
+		log.Println("Inside WeightFn function.", strconv.Itoa(params.Magnitude),
 			strconv.Itoa(params.Frequency), strconv.Itoa(params.Constant), strconv.Itoa(params.Phase))
 		base := 0.0
 		if params.Frequency != 0 {
@@ -205,8 +212,9 @@ func getTaskParams(testDefinition Test) *boomer.Task {
 }
 
 func main() {
-	config := newrelic.NewConfig(os.Getenv("NEW_RELIC_APPNAME"), os.Getenv("NEW_RELIC_LICENSE"))
-	_, _ = newrelic.NewApplication(config)
+
+	// config := newrelic.NewConfig(os.Getenv("NEW_RELIC_APPNAME"), os.Getenv("NEW_RELIC_LICENSE"))
+	// _, _ = newrelic.NewApplication(config)
 
 	log.Println("Executing main function")
 	rawTestDefinitions, _ := ioutil.ReadFile(testDefinitionsFile)
