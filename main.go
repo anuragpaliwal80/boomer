@@ -83,7 +83,6 @@ func createHTTPClient() *http.Client {
 }
 
 func httpReq(method string, url string, bodysize int64, headers []header, wait1 int16) func() {
-	// log.Println("Inside httpReq func")
 	//file := postData[:bodysize]
 	if dataArraySize == 0 {
 		log.Println("DataArraySize was 0")
@@ -91,8 +90,6 @@ func httpReq(method string, url string, bodysize int64, headers []header, wait1 
 		throughPutWait, _ = strconv.Atoi(os.Getenv("THROUGH_PUT_WAIT"))
 	}
 	return func() {
-		// start := boomer.Now()
-		// log.Println("Inside func of  httpReq")
 		var req *http.Request
 		var elapsed int64
 		var wait int64
@@ -126,21 +123,6 @@ func httpReq(method string, url string, bodysize int64, headers []header, wait1 
 		req = req.WithContext(ctxt)
 		resp, err := httpClient.Do(req)
 		result.End(time.Now())
-		elapsed = boomer.Now() - start
-		if elapsed < 0 {
-			elapsed = 0
-		}
-		reqIns := boomer.RequestInsights {
-			int64(result.DNSLookup / time.Millisecond),
-			int64(result.TCPConnection / time.Millisecond),
-			int64(result.TLSHandshake / time.Millisecond),
-			int64(result.ServerProcessing / time.Millisecond),
-			int64(result.NameLookup / time.Millisecond),
-			int64(result.Connect / time.Millisecond),
-			int64(result.Pretransfer / time.Millisecond),
-			int64(result.StartTransfer / time.Millisecond),
-			elapsed,
-		}
 
 		if err != nil {
 			log.Println(err)
@@ -150,23 +132,35 @@ func httpReq(method string, url string, bodysize int64, headers []header, wait1 
 			}
 			boomer.Events.Publish("request_failure", method, url, elapsed, err.Error())
 		} else {
-			defer resp.Body.Close()
-			// for {
-			// 	_, err = resp.Body.Read(b)
-			// 	if err != nil {
-			// 		break
-			// 	}
-			// }
-			// _, _ = ioutil.ReadAll(resp.Body)
+			for {
+				_, err = resp.Body.Read(b)
+				if err != nil {
+					break
+				}
+				_, _ = ioutil.ReadAll(resp.Body)
+			}
 			elapsed = boomer.Now() - start
 			if elapsed < 0 {
 				elapsed = 0
 			}
+			reqIns := boomer.RequestInsights {
+				int64(result.DNSLookup / time.Millisecond),
+				int64(result.TCPConnection / time.Millisecond),
+				int64(result.TLSHandshake / time.Millisecond),
+				int64(result.ServerProcessing / time.Millisecond),
+				int64(result.NameLookup / time.Millisecond),
+				int64(result.Connect / time.Millisecond),
+				int64(result.Pretransfer / time.Millisecond),
+				int64(result.StartTransfer / time.Millisecond),
+				elapsed,
+			}
+
 			if resp.StatusCode < 200 || resp.StatusCode > 299 {
 				boomer.Events.Publish("request_failure", method, url, elapsed, strconv.Itoa(resp.StatusCode))
 			} else {
 				boomer.Events.Publish("request_success", method, url, reqIns, resp.ContentLength)
 			}
+			resp.Body.Close()
 			elapsed = boomer.Now() - start
 			if elapsed < 0 {
 				elapsed = 0
