@@ -84,7 +84,7 @@ func createHTTPClient() *http.Client {
 
 func httpReq(method string, url string, bodysize int64, headers []header, wait1 int16) func() {
 	//file := postData[:bodysize]
-	if dataArraySize == 0 {
+	if dataArraySize == 0 && method == "POST" {
 		log.Println("DataArraySize was 0")
 		dataArraySize, _ = strconv.ParseInt(os.Getenv("DATA_ARRAY_SIZE"), 10, 0)
 		throughPutWait, _ = strconv.Atoi(os.Getenv("THROUGH_PUT_WAIT"))
@@ -114,7 +114,6 @@ func httpReq(method string, url string, bodysize int64, headers []header, wait1 
 			for _, header := range headers {
 				value := RandStringBytes(header.Value)
 				req.Header.Set(header.Name, value)
-				log.Println("Setting header: ", header.Name)
 			}
 		}
 		//Using http stat and handing over the request to the context
@@ -122,7 +121,6 @@ func httpReq(method string, url string, bodysize int64, headers []header, wait1 
 		ctxt := httpstat.WithHTTPStat(req.Context(), &result)
 		req = req.WithContext(ctxt)
 		resp, err := httpClient.Do(req)
-		result.End(time.Now())
 
 		if err != nil {
 			log.Println(err)
@@ -132,15 +130,19 @@ func httpReq(method string, url string, bodysize int64, headers []header, wait1 
 			}
 			boomer.Events.Publish("request_failure", method, url, elapsed, err.Error())
 		} else {
-			defer resp.Body.Close()
-
 			if resp.StatusCode < 200 || resp.StatusCode > 299 {
 				boomer.Events.Publish("request_failure", method, url, elapsed, strconv.Itoa(resp.StatusCode))
 			} else {
-				_, err = ioutil.ReadAll(resp.Body)
+				tmpfile, err := ioutil.TempFile("", "example")
 				if err != nil {
-						log.Println("ERROR: While reading the response.")
-					}
+					log.Println("ERROR: Not able to create new TempFile.")
+				}
+				if _, err := io.Copy(tmpfile, resp.Body); err != nil {
+				    log.Println("ERROR: While reading the response.")
+				}
+				defer os.Remove(tmpfile.Name())
+				defer resp.Body.Close()
+				defer result.End(time.Now())
 				elapsed = boomer.Now() - start
 				if elapsed < 0 {
 					elapsed = 0
